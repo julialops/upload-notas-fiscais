@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Upload de Notas Fiscais - Google Drive</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- jsPDF para conversão automática de imagens e fotos em PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0fdf4',
+              100: '#dcfce7',
+              500: '#22c55e',
+              600: '#16a34a',
+              700: '#15803d',
+              800: '#166534'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .dragover {
+      border-color: #16a34a !important;
+      background-color: #f0fdf4 !important;
+      transform: scale(1.005);
+    }
+    .custom-scroll::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background-color: #cbd5e1;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col antialiased">
+
+  <!-- TOAST DE NOTIFICAÇÃO -->
+  <div id="toastContainer" class="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm pointer-events-none"></div>
+
+  <!-- CABEÇALHO -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-md shadow-emerald-500/20 shrink-0">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-lg sm:text-xl font-bold text-slate-900 leading-tight">Envio de Nota Fiscal</h1>
+          <p class="text-xs text-slate-500">Destino fixo automático no Google Drive</p>
+        </div>
+      </div>
+
+      <!-- BOTÕES DE ATALHO -->
+      <div class="flex items-center gap-2">
+        <a id="driveFolderLink" href="https://drive.google.com/drive/folders/10OMzZh9UB9zmz6ANBqeEH39hFVkpqAf_" target="_blank" rel="noopener noreferrer" 
+           class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-emerald-800 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-200 transition-colors">
+          <svg class="w-4 h-4 text-emerald-600" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/>
+          </svg>
+          <span class="hidden sm:inline">Abrir Pasta</span>
+          <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+          </svg>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-4xl mx-auto px-4 sm:px-6 py-6 flex-1 w-full space-y-6">
+
+    <!-- BANNER DA PASTA DESTINO -->
+    <div class="bg-gradient-to-r from-slate-900 to-slate-800 text-white rounded-2xl p-4 sm:p-5 shadow-sm flex items-center justify-between gap-3">
+      <div class="space-y-1">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+            Destino Seguro Travado
+          </span>
+          <span class="text-xs text-slate-300 font-mono">10OMzZh9UB9zmz6ANBqeEH39hFVkpqAf_</span>
+        </div>
+        <p class="text-xs text-slate-300">
+          O documento será salvo automaticamente na pasta fixa no Google Drive com o seu nome.
+        </p>
+      </div>
+    </div>
+
+    <!-- FORMULÁRIO DE ENVIO DIRETO -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6 space-y-6">
+      
+      <div>
+        <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2 mb-1">
+          <span class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 text-xs flex items-center justify-center font-bold">1</span>
+          Identificação do Envio
+        </h2>
+        <p class="text-xs text-slate-500 mb-4">Informe quem está subindo a nota para identificação no nome do arquivo.</p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <!-- QUEM ESTÁ SUBINDO (OBRIGATÓRIO) -->
+          <div class="sm:col-span-2">
+            <label class="block text-xs font-semibold text-slate-700 mb-1.5">
+              Quem está subindo a nota? <span class="text-emerald-600 font-bold">*</span>
+            </label>
+            <div class="relative">
+              <input type="text" id="uploaderName" placeholder="Ex: Maria Santos ou Departamento Compras" oninput="updateNamePreview()"
+                class="w-full bg-slate-50 border border-slate-300 rounded-xl pl-10 pr-3 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none transition-all">
+              <svg class="w-4 h-4 text-slate-400 absolute left-3.5 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+              </svg>
+            </div>
+            <p class="text-[10px] text-slate-400 mt-1">Este nome será adicionado diretamente ao arquivo no Google Drive.</p>
+          </div>
+
+          <!-- TIPO DE DOCUMENTO -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1.5">Tipo de Documento</label>
+            <select id="docPrefix" onchange="updateNamePreview()" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-xs text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none transition-all">
+              <option value="NF">NF - Nota Fiscal de Produto</option>
+              <option value="NFS">NFS - Nota Fiscal de Serviço</option>
+              <option value="CUPOM">CUPOM - Cupom Fiscal / NFC-e</option>
+              <option value="RECIBO">RECIBO - Recibo de Pagamento</option>
+              <option value="DESPESA">DESPESA - Comprovante Geral</option>
+            </select>
+          </div>
+
+          <!-- DATA DO DOCUMENTO (DIA, MÊS E ANO) -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1.5">Data da Nota (Dia / Mês / Ano)</label>
+            <input type="date" id="docDate" onchange="updateNamePreview()" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-2 text-xs text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none transition-all">
+          </div>
+        </div>
+      </div>
+
+      <div class="border-t border-slate-100 pt-5">
+        <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2 mb-1">
+          <span class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 text-xs flex items-center justify-center font-bold">2</span>
+          Anexar ou Escanear a Nota
+        </h2>
+        <p class="text-xs text-slate-500 mb-4">Escolha o arquivo digitalizado ou tire uma foto com o celular.</p>
+
+        <!-- DROPZONE (QUANDO NENHUM ARQUIVO FOI SELECIONADO) -->
+        <div id="dropZone" class="border-2 border-dashed border-slate-300 hover:border-emerald-500 bg-slate-50 hover:bg-emerald-50/40 rounded-2xl p-6 sm:p-8 text-center transition-all duration-200 cursor-pointer flex flex-col items-center justify-center min-h-[200px]">
+          <input type="file" id="fileInput" accept=".pdf,.png,.jpg,.jpeg,.webp,.xml" class="hidden">
+          <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden">
+          
+          <div class="w-14 h-14 rounded-full bg-emerald-100/70 text-emerald-700 flex items-center justify-center mb-3">
+            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+            </svg>
+          </div>
+          
+          <h3 class="text-sm font-semibold text-slate-800 mb-1">
+            Arraste e solte o arquivo da sua nota aqui
+          </h3>
+          <p class="text-xs text-slate-500 max-w-sm mb-4">
+            Suporta PDF, fotos em JPG/PNG ou arquivos XML.
+          </p>
+
+          <div class="flex flex-wrap items-center justify-center gap-3">
+            <button type="button" onclick="document.getElementById('fileInput').click()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-all flex items-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+              </svg>
+              Selecionar Arquivo
+            </button>
+
+            <button type="button" onclick="document.getElementById('cameraInput').click()" class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded-lg shadow-sm transition-all flex items-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
+              </svg>
+              Escanear com Câmera
+            </button>
+          </div>
+        </div>
+
+        <!-- CARD DO ARQUIVO SELECIONADO (OCULTO ATÉ ESCOLHER UM ARQUIVO) -->
+        <div id="selectedFileCard" class="hidden bg-slate-50 border border-slate-200 rounded-2xl p-4 sm:p-5">
+          <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div class="flex items-center gap-3.5 min-w-0 flex-1">
+              <div id="filePreviewThumb" onclick="openCurrentPreview()" class="w-14 h-14 rounded-xl bg-white border border-slate-200 flex items-center justify-center overflow-hidden shrink-0 cursor-pointer hover:opacity-80 transition-opacity shadow-sm">
+                <!-- Miniatura dinâmica -->
+              </div>
+              <div class="min-w-0 flex-1 space-y-1">
+                <p id="cardOriginalName" class="text-xs font-bold text-slate-800 truncate"></p>
+                <p id="cardFileSize" class="text-[11px] text-slate-500"></p>
+                <span id="cardFinalNamePreview" class="text-[11px] font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-block max-w-full truncate"></span>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+              <button type="button" onclick="openCurrentPreview()" class="px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 rounded-lg transition-colors">
+                Visualizar
+              </button>
+              <button type="button" onclick="removeCurrentFile()" class="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition-colors">
+                Trocar Arquivo
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="border-t border-slate-100 pt-5 space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1.5">
+            Nome final no Google Drive:
+          </label>
+          <div id="fileNameDisplay" class="font-mono text-slate-400 font-medium bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-xs break-all">
+            (Preencha quem está subindo a nota e selecione o arquivo)
+          </div>
+        </div>
+
+        <!-- BARRA DE PROGRESSO DE UPLOAD -->
+        <div id="uploadProgressSection" class="hidden space-y-1.5">
+          <div class="flex justify-between text-xs text-slate-600 font-medium">
+            <span>Enviando para o Google Drive...</span>
+            <span id="uploadProgressPercent">0%</span>
+          </div>
+          <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+            <div id="uploadProgressBar" class="bg-emerald-500 h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <!-- BOTÃO PRINCIPAL DE SUBIR NOTA -->
+        <button id="btnSubmitUpload" type="button" onclick="handleDirectUpload()" disabled
+          class="w-full py-3.5 px-6 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white font-bold text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+          </svg>
+          <span id="btnSubmitText">Subir Nota para o Google Drive</span>
+        </button>
+
+        <!-- AVISO DE SUCESSO APÓS O ENVIO -->
+        <div id="successNotice" class="hidden bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-center space-y-3">
+          <div class="flex items-center justify-center gap-2 text-emerald-800 font-bold text-sm">
+            <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            Nota enviada com sucesso para a pasta!
+          </div>
+          <p id="successFileName" class="text-xs text-emerald-900 font-mono"></p>
+          <div class="flex items-center justify-center gap-3 pt-1">
+            <a id="btnOpenInDrive" href="#" target="_blank" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold transition-colors">
+              Ver no Google Drive
+            </a>
+            <button type="button" onclick="resetFormForNextUpload()" class="px-3.5 py-1.5 bg-white border border-emerald-300 text-emerald-800 hover:bg-emerald-100 rounded-lg text-xs font-semibold transition-colors">
+              Subir Outra Nota
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </main>
+
+  <footer class="bg-white border-t border-slate-200 mt-auto py-4">
+    <div class="max-w-4xl mx-auto px-4 text-center text-xs text-slate-500">
+      Destino padrão: <a href="https://drive.google.com/drive/folders/10OMzZh9UB9zmz6ANBqeEH39hFVkpqAf_" target="_blank" class="text-emerald-600 hover:underline font-mono font-medium">Google Drive (10OMzZh9UB9zmz6ANBqeEH39hFVkpqAf_)</a>
+    </div>
+  </footer>
+
+  <div id="previewModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 backdrop-blur-sm hidden p-4">
+    <div class="bg-white w-full max-w-3xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
+      <div class="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <h3 id="previewTitle" class="text-sm font-bold text-slate-800 truncate">Pré-visualização</h3>
+        <button onclick="togglePreviewModal(false)" class="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+      <div id="previewBody" class="p-4 flex-1 flex items-center justify-center overflow-auto bg-slate-100 min-h-[300px]"></div>
+    </div>
+  </div>
+
+  <script>
+    // CONSTANTES FIXAS E TRAVADAS (Sem permissão de alteração pelo usuário final)
+    const TARGET_FOLDER_ID = "10OMzZh9UB9zmz6ANBqeEH39hFVkpqAf_";
+    
+    // URL definitiva de envio integrada
+    const HARDCODED_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwnB8jBIUIQuVDKz7SMuErIVK1wL2XyiiR9K4ElZRdSg31eUKTRVoTAhgUNAMhT72VFrQ/exec"; 
+
+    function resolveScriptUrl() {
+      if (HARDCODED_APPS_SCRIPT_URL && HARDCODED_APPS_SCRIPT_URL.startsWith('http')) {
+        return HARDCODED_APPS_SCRIPT_URL;
+      }
+      // Recupera a URL que você já salvou anteriormente no navegador
+      try {
+        const saved = sessionStorage.getItem('nfe_uploader_config') || localStorage.getItem('nfe_uploader_config');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed.appsScriptUrl) return parsed.appsScriptUrl;
+        }
+      } catch (e) {}
+      return "";
+    }
+
+    let selectedFile = null;
+    let appConfig = {
+      folderId: TARGET_FOLDER_ID,
+      appsScriptUrl: resolveScriptUrl(),
+      demoMode: false // Bloqueado: sempre envio real para o Drive
+    };
+
+    window.addEventListener('DOMContentLoaded', () => {
+      // Data padrão: data atual (Dia, Mês e Ano)
+      const now = new Date();
+      const dateInput = document.getElementById('docDate');
+      if (dateInput) {
+        // YYYY-MM-DD
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        dateInput.value = `${year}-${month}-${day}`;
+      }
+
+      // Recuperar responsável salvo na sessão
+      const savedUploader = sessionStorage.getItem('nfe_uploader_name') || localStorage.getItem('nfe_uploader_name');
+      const uploaderInput = document.getElementById('uploaderName');
+      if (savedUploader && uploaderInput) {
+        uploaderInput.value = savedUploader;
+      }
+
+      // Garante persistência da URL do script configurada
+      if (appConfig.appsScriptUrl) {
+        localStorage.setItem('nfe_uploader_config', JSON.stringify(appConfig));
+      }
+
+      setupDragAndDrop();
+      setupFileInputs();
+      updateNamePreview();
+    });
+
+    function sanitizeForFilename(text) {
+      if (!text) return '';
+      return text
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '') // remove acentos
+        .replace(/[^a-zA-Z0-9_-]/g, '_') // caracteres especiais viram _
+        .replace(/_+/g, '_')             // remove sublinhados duplicados
+        .replace(/^_+|_+$/g, '');        // apara extremidades
+    }
+
+    function computeFinalFileName() {
+      const uploader = (document.getElementById('uploaderName')?.value || '').trim();
+      const prefix = document.getElementById('docPrefix')?.value || 'NF';
+      const docDate = document.getElementById('docDate')?.value || new Date().toISOString().slice(0, 10);
+
+      // Sempre garante a saída em PDF para documentos e fotos convertidas
+      let ext = 'pdf';
+      if (selectedFile && selectedFile.name.toLowerCase().endsWith('.xml')) {
+        ext = 'xml';
+      }
+
+      // Sanitiza o nome de quem está subindo para o padrão de arquivo
+      const uploaderClean = sanitizeForFilename(uploader) || 'Sem_Nome';
+
+      // Padrão solicitado: TIPO_DATA_NOME.pdf (ex: NF_2026-09-25_Maria_Santos.pdf)
+      return `${prefix}_${docDate}_${uploaderClean}.${ext}`;
+    }
+
+    function updateNamePreview() {
+      const uploaderInput = document.getElementById('uploaderName');
+      const uploader = uploaderInput ? uploaderInput.value.trim() : '';
+      if (uploader) {
+        sessionStorage.setItem('nfe_uploader_name', uploader);
+        localStorage.setItem('nfe_uploader_name', uploader);
+      }
+
+      const display = document.getElementById('fileNameDisplay');
+      const btnSubmit = document.getElementById('btnSubmitUpload');
+      if (!display || !btnSubmit) return;
+
+      if (!selectedFile) {
+        display.innerText = uploader 
+          ? "(Selecione ou escaneie o arquivo da nota acima para finalizar)"
+          : "(Preencha quem está subindo a nota e anexe o arquivo)";
+        display.className = "font-mono text-slate-400 font-medium bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-xs break-all";
+        btnSubmit.disabled = true;
+        return;
+      }
+
+      const finalName = computeFinalFileName();
+      display.innerText = finalName;
+      display.className = "font-mono text-emerald-800 font-bold bg-emerald-50 p-2.5 rounded-xl border border-emerald-200 text-xs break-all select-all";
+
+      const cardFinalPreview = document.getElementById('cardFinalNamePreview');
+      if (cardFinalPreview) cardFinalPreview.innerText = `Nome final: ${finalName}`;
+
+      btnSubmit.disabled = !uploader;
+    }
+
+    function setupDragAndDrop() {
+      const dropZone = document.getElementById('dropZone');
+      if (!dropZone) return;
+
+      ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dropZone.classList.add('dragover');
+        }, false);
+      });
+
+      ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dropZone.classList.remove('dragover');
+        }, false);
+      });
+
+      dropZone.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        if (dt.files && dt.files.length > 0) {
+          handleFileSelection(dt.files[0]);
+        }
+      });
+    }
+
+    function setupFileInputs() {
+      const fileInput = document.getElementById('fileInput');
+      const cameraInput = document.getElementById('cameraInput');
+
+      if (fileInput) {
+        fileInput.addEventListener('change', (e) => {
+          if (e.target.files && e.target.files.length > 0) {
+            handleFileSelection(e.target.files[0]);
+          }
+          fileInput.value = '';
+        });
+      }
+
+      if (cameraInput) {
+        cameraInput.addEventListener('change', (e) => {
+          if (e.target.files && e.target.files.length > 0) {
+            handleFileSelection(e.target.files[0]);
+          }
+          cameraInput.value = '';
+        });
+      }
+    }
+
+    // Função utilitária para converter qualquer imagem em página A4 PDF
+    function convertImageToPdf(rawImgDataUrl) {
+      return new Promise((resolve, reject) => {
+        try {
+          const img = new Image();
+          img.onload = () => {
+            const { jsPDF } = window.jspdf;
+            const isLandscape = img.width > img.height;
+            const pdf = new jsPDF({
+              orientation: isLandscape ? 'landscape' : 'portrait',
+              unit: 'mm',
+              format: 'a4'
+            });
+
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
+            const margin = 10;
+            const maxW = pageWidth - (margin * 2);
+            const maxH = pageHeight - (margin * 2);
+
+            let renderW = maxW;
+            let renderH = (img.height * renderW) / img.width;
+
+            if (renderH > maxH) {
+              renderH = maxH;
+              renderW = (img.width * renderH) / img.height;
+            }
+
+            const posX = margin + (maxW - renderW) / 2;
+            const posY = margin + (maxH - renderH) / 2;
+
+            pdf.addImage(img, 'JPEG', posX, posY, renderW, renderH, undefined, 'FAST');
+
+            const pdfBlob = pdf.output('blob');
+            const pdfDataUrl = pdf.output('datauristring');
+
+            resolve({ blob: pdfBlob, dataUrl: pdfDataUrl });
+          };
+          img.onerror = () => reject(new Error('Falha ao processar a imagem'));
+          img.src = rawImgDataUrl;
+        } catch (e) {
+          reject(e);
+        }
+      });
+    }
+
+    async function handleFileSelection(file) {
+      if (!file) return;
+
+      const isImage = file.type.startsWith('image/') || /\.(png|jpe?g|webp|bmp|gif)$/i.test(file.name);
+
+      selectedFile = {
+        file: file,
+        name: file.name,
+        size: file.size,
+        type: file.type || 'application/octet-stream',
+        dataUrl: null,
+        isConvertedPdf: false,
+        originalImgDataUrl: null
+      };
+
+      const dropZone = document.getElementById('dropZone');
+      const selectedFileCard = document.getElementById('selectedFileCard');
+      const cardOriginalName = document.getElementById('cardOriginalName');
+      const cardFileSize = document.getElementById('cardFileSize');
+      const successNotice = document.getElementById('successNotice');
+
+      if (dropZone) dropZone.classList.add('hidden');
+      if (selectedFileCard) selectedFileCard.classList.remove('hidden');
+      if (cardOriginalName) cardOriginalName.innerText = file.name;
+      if (cardFileSize) cardFileSize.innerText = formatFileSize(file.size);
+      if (successNotice) successNotice.classList.add('hidden');
+
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const rawData = e.target.result;
+
+        if (isImage) {
+          showToast('Convertendo imagem para documento PDF...', 'info');
+          try {
+            const { blob, dataUrl } = await convertImageToPdf(rawData);
+            selectedFile.originalImgDataUrl = rawData;
+            selectedFile.dataUrl = dataUrl;
+            selectedFile.file = blob;
+            selectedFile.type = 'application/pdf';
+            selectedFile.size = blob.size;
+            selectedFile.isConvertedPdf = true;
+
+            if (cardFileSize) {
+              cardFileSize.innerText = `${formatFileSize(blob.size)} (Convertido em PDF)`;
+            }
+            showToast('Imagem convertida para PDF com sucesso!', 'success');
+          } catch (err) {
+            selectedFile.dataUrl = rawData;
+            showToast('Mantendo arquivo original da imagem.', 'info');
+          }
+        } else {
+          selectedFile.dataUrl = rawData;
+          showToast(`Arquivo "${file.name}" carregado!`, 'success');
+        }
+
+        updateCardThumb();
+        updateNamePreview();
+      };
+      reader.readAsDataURL(file);
+
+      updateNamePreview();
+    }
+
+    function updateCardThumb() {
+      const thumb = document.getElementById('filePreviewThumb');
+      if (!thumb || !selectedFile) return;
+
+      if (selectedFile.originalImgDataUrl) {
+        thumb.innerHTML = `<img src="${selectedFile.originalImgDataUrl}" alt="Preview" class="w-full h-full object-cover">`;
+      } else if (selectedFile.type.startsWith('image/')) {
+        thumb.innerHTML = `<img src="${selectedFile.dataUrl}" alt="Preview" class="w-full h-full object-cover">`;
+      } else if (selectedFile.type.includes('pdf') || selectedFile.name.endsWith('.pdf') || selectedFile.isConvertedPdf) {
+        thumb.innerHTML = `<svg class="w-7 h-7 text-red-500" fill="currentColor" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-9.5 8.5h-1v-4h1c.83 0 1.5.67 1.5 1.5v1c0 .83-.67 1.5-1.5 1.5zm5 2h-1.5v-6H14c.83 0 1.5.67 1.5 1.5v3c0 .83-.67 1.5-1.5 1.5zm4.5-4h-2v1h1.5v1H19v2h-1.5v-6H19v2z"/></svg>`;
+      } else {
+        thumb.innerHTML = `<svg class="w-7 h-7 text-blue-500" fill="currentColor" viewBox="0 0 24 24"><path d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0l4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"/></svg>`;
+      }
+    }
+
+    function removeCurrentFile() {
+      selectedFile = null;
+      const selectedFileCard = document.getElementById('selectedFileCard');
+      const dropZone = document.getElementById('dropZone');
+      if (selectedFileCard) selectedFileCard.classList.add('hidden');
+      if (dropZone) dropZone.classList.remove('hidden');
+      updateNamePreview();
+    }
+
+    function resetFormForNextUpload() {
+      removeCurrentFile();
+      const successNotice = document.getElementById('successNotice');
+      if (successNotice) successNotice.classList.add('hidden');
+      updateNamePreview();
+    }
+
+    async function handleDirectUpload() {
+      if (!selectedFile) {
+        showToast('Selecione ou escaneie o arquivo primeiro!', 'error');
+        return;
+      }
+
+      const uploader = (document.getElementById('uploaderName')?.value || '').trim();
+      if (!uploader) {
+        showToast('Por favor, preencha quem está subindo a nota.', 'error');
+        document.getElementById('uploaderName')?.focus();
+        return;
+      }
+
+      // Verifica se a URL do script está disponível
+      if (!appConfig.appsScriptUrl) {
+        appConfig.appsScriptUrl = resolveScriptUrl();
+      }
+
+      const finalFileName = computeFinalFileName();
+      const progressSection = document.getElementById('uploadProgressSection');
+      const progressBar = document.getElementById('uploadProgressBar');
+      const progressPercent = document.getElementById('uploadProgressPercent');
+      const btnSubmit = document.getElementById('btnSubmitUpload');
+      const btnSubmitText = document.getElementById('btnSubmitText');
+
+      if (btnSubmit) btnSubmit.disabled = true;
+      if (btnSubmitText) btnSubmitText.innerText = 'Subindo Nota para o Google Drive...';
+      if (progressSection) progressSection.classList.remove('hidden');
+      if (progressBar) progressBar.style.width = '20%';
+      if (progressPercent) progressPercent.innerText = '20%';
+
+      try {
+        let driveUrl = `https://drive.google.com/drive/folders/${appConfig.folderId}`;
+
+        if (!appConfig.appsScriptUrl) {
+          throw new Error("A URL do Google Apps Script precisa estar configurada no arquivo.");
+        }
+
+        if (progressBar) progressBar.style.width = '55%';
+        if (progressPercent) progressPercent.innerText = '55%';
+        
+        const result = await uploadToGoogleDrive(selectedFile, finalFileName, uploader);
+        if (result && result.fileUrl) {
+          driveUrl = result.fileUrl;
+        }
+
+        if (progressBar) progressBar.style.width = '100%';
+        if (progressPercent) progressPercent.innerText = '100%';
+
+        setTimeout(() => {
+          if (progressSection) progressSection.classList.add('hidden');
+          if (btnSubmitText) btnSubmitText.innerText = 'Subir Nota para o Google Drive';
+
+          const successNotice = document.getElementById('successNotice');
+          const successFileName = document.getElementById('successFileName');
+          const btnOpenInDrive = document.getElementById('btnOpenInDrive');
+
+          if (successFileName) successFileName.innerText = `Arquivo: ${finalFileName}`;
+          if (btnOpenInDrive) btnOpenInDrive.href = driveUrl;
+          if (successNotice) successNotice.classList.remove('hidden');
+
+          showToast('Nota fiscal enviada com sucesso para o Drive!', 'success');
+        }, 350);
+
+      } catch (err) {
+        if (progressSection) progressSection.classList.add('hidden');
+        if (btnSubmit) btnSubmit.disabled = false;
+        if (btnSubmitText) btnSubmitText.innerText = 'Tentar Subir Novamente';
+        showToast(`Erro no envio: ${err.message || 'Falha na conexão'}`, 'error');
+      }
+    }
+
+    function uploadToGoogleDrive(fileObj, finalName, uploader) {
+      return new Promise((resolve, reject) => {
+        const sendPayload = async (base64Data) => {
+          try {
+            const payload = {
+              filename: finalName,
+              mimeType: fileObj.type || 'application/pdf',
+              base64: base64Data,
+              folderId: appConfig.folderId,
+              description: `Responsável: ${uploader} | Arquivo Original: ${fileObj.name}`
+            };
+
+            const response = await fetch(appConfig.appsScriptUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+              body: JSON.stringify(payload)
+            });
+
+            const result = await response.json();
+            if (result.status === 'success') {
+              resolve(result);
+            } else {
+              reject(new Error(result.message || 'Erro ao gravar no Google Drive'));
+            }
+          } catch (e) {
+            reject(e);
+          }
+        };
+
+        if (fileObj.dataUrl) {
+          sendPayload(fileObj.dataUrl);
+        } else {
+          const reader = new FileReader();
+          reader.onload = () => sendPayload(reader.result);
+          reader.onerror = () => reject(new Error('Falha ao ler o arquivo local'));
+          reader.readAsDataURL(fileObj.file);
+        }
+      });
+    }
+
+    function openCurrentPreview() {
+      if (!selectedFile || !selectedFile.dataUrl) return;
+
+      const modal = document.getElementById('previewModal');
+      const title = document.getElementById('previewTitle');
+      const body = document.getElementById('previewBody');
+
+      if (title) title.innerText = computeFinalFileName();
+      if (body) {
+        if (selectedFile.originalImgDataUrl) {
+          body.innerHTML = `
+            <div class="flex flex-col items-center gap-3">
+              <span class="text-xs bg-emerald-100 text-emerald-800 font-semibold px-2.5 py-1 rounded-full">Convertido para PDF A4</span>
+              <img src="${selectedFile.originalImgDataUrl}" alt="Preview" class="max-h-[65vh] max-w-full rounded-lg shadow-md object-contain">
+            </div>
+          `;
+        } else if (selectedFile.type.startsWith('image/')) {
+          body.innerHTML = `<img src="${selectedFile.dataUrl}" alt="Preview" class="max-h-[75vh] max-w-full rounded-lg shadow-md object-contain">`;
+        } else if (selectedFile.type.includes('pdf')) {
+          body.innerHTML = `<iframe src="${selectedFile.dataUrl}" class="w-full h-[75vh] rounded-lg border border-slate-300" frameborder="0"></iframe>`;
+        } else {
+          body.innerHTML = `
+            <div class="text-center p-8 text-slate-500">
+              <p class="font-medium text-slate-700">${selectedFile.name}</p>
+              <p class="text-xs text-slate-400 mt-1">Pré-visualização direta não disponível para este formato.</p>
+            </div>
+          `;
+        }
+      }
+
+      if (modal) modal.classList.remove('hidden');
+    }
+
+    function togglePreviewModal(show) {
+      const modal = document.getElementById('previewModal');
+      if (!modal) return;
+      if (show) modal.classList.remove('hidden');
+      else modal.classList.add('hidden');
+    }
+
+    function formatFileSize(bytes) {
+      if (bytes === 0) return '0 Bytes';
+      const k = 1024;
+      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      if (!container) return;
+
+      const toast = document.createElement('div');
+      const colors = {
+        success: 'bg-emerald-600 text-white shadow-emerald-600/30',
+        error: 'bg-red-600 text-white shadow-red-600/30',
+        info: 'bg-slate-800 text-white shadow-slate-800/30'
+      };
+
+      toast.className = `${colors[type] || colors.info} px-4 py-3 rounded-xl shadow-lg text-xs font-medium flex items-center gap-2 transform transition-all duration-300 translate-y-2 opacity-0 pointer-events-auto`;
+      toast.innerHTML = `<span>${message}</span>`;
+      container.appendChild(toast);
+
+      setTimeout(() => toast.classList.remove('translate-y-2', 'opacity-0'), 10);
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+  </script>
+</body>
+</html>
